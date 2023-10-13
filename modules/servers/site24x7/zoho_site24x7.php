@@ -7,7 +7,6 @@ use WHMCS\Config\Setting;
 if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
 }
-
 function zoho_site24x7_MetaData()
 {    
      try {
@@ -29,16 +28,10 @@ function zoho_site24x7_MetaData()
             $pdo->beginTransaction();
         }
 	} catch (Exception $e) {
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
     }
     return array(
-    	'DisplayName' => 'Site24x7',
+    	'DisplayName' => 'Zoho Site24x7',
     	'APIVersion' => '1.1',
     	'RequiresServer' => true,
     	'DefaultNonSSLPort' => '1111',
@@ -47,8 +40,7 @@ function zoho_site24x7_MetaData()
     	'AdminSingleSignOnLabel' => 'Login to Panel as Admin',
     );
     
-} 
-
+}
 function zoho_site24x7_ConfigOptions()
 {  
          $patharray = array();
@@ -80,7 +72,7 @@ function zoho_site24x7_ConfigOptions()
                             For other DCs, Generated from <a href="https://accounts.zoho.com/developerconsole" target=_blank>Zoho Developer Console</a><br><br>                           
                             <label>Admin folder name</label><br>
                            <input type="text" size="60" name="zm_ad"/><br>
-                           If you have a customized WHMCS admin directory name, please enter it here. You will be redirected here after authentication.<br><br> 
+                           If you have a customized WHMCS admin directory name, please enter it here. You will be redirected here after authentication.<a href="https://www.zoho.com/mail/help/partnerportal/whmcs-integration.html" target=_blank>Refer here</a> for instructions.<br><br>
                            <label>Redirect URL</label><br>
                            <input type="text" size="60" name="zm_ru" value='.$_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['SERVER_NAME'].'/modules/servers/zoho_site24x7/zsite24x7_oauthgrant.php required readonly/><br>
                            Redirect URL used to generate Client ID and Client Secret.<br><br>
@@ -114,6 +106,7 @@ function zoho_site24x7_ConfigOptions()
         return $config;
 }
 
+
 function get_site24x7_access_token(array $params) {
 
         $curl = curl_init();
@@ -146,43 +139,65 @@ function zoho_site24x7_CreateAccount(array $params)
 	$planid;
 	$bodyArr = [];
 	$plantype = $params['configoptions']['Plan Type'];
+	$planmode = $params['configoptions']['Mode of Plan'];
 	try {
     	$curl = curl_init();
     	$arrClient = $params['clientsdetails'];
     	$country = $arrClient['countryname'];
-        $bodyArr = json_encode(array(
-    		"serviceid" => 3,
-    		"email" => $arrClient['email'],
-    		"customer" => array(
-    		"companyname" => $arrClient['companyname'],
-    		"street" => $arrClient['address1'],
-    		"city" => $arrClient['city'],
-    		"state" => $arrClient['state'],
-    		"country" => $country,
-    		"zipcode" => $arrClient['postcode'],
-    		"phone" => $arrClient['phonenumber']
-    		),
-    		"subscription" => array(
-    		"plan" => $plantype,
-    		"addons" => array(
-    		),
-    		"payperiod" => "YEAR",
-    		"currency" => "1",
-    		"addprofile" => "true"
-    		),
-	    ));
-        
-	$bodyJson = array('JSONString' => $bodyArr);
-	$bodyJsn = json_encode($bodyJson);
+    	
+    	if($planmode == "Assign Paid Plan"){
+            $bodyArr = array(
+        		"serviceid" => 3,
+        		"email" => $arrClient['email'],
+        		"customer" => array(
+        		"companyname" => $arrClient['companyname'],
+        		"street" => $arrClient['address1'],
+        		"city" => $arrClient['city'],
+        		"state" => $arrClient['state'],
+        		"country" => $country,
+        		"zipcode" => $arrClient['postcode'],
+        		"phone" => $arrClient['phonenumber']
+        		),
+        		"subscription" => array(
+        		"plan" => $plantype,
+        		"addons" => array(
+        		),
+        		"payperiod" => "YEAR"
+        		)
+    	    );
+        }else{
+            $bodyArr = array(
+        		"serviceid" => 3,
+        		"email" => $arrClient['email'],
+        		"customer" => array(
+        		"companyname" => $arrClient['companyname'],
+        		"street" => $arrClient['address1'],
+        		"city" => $arrClient['city'],
+        		"state" => $arrClient['state'],
+        		"country" => $country,
+        		"zipcode" => $arrClient['postcode'],
+        		"phone" => $arrClient['phonenumber']
+        		),
+        		"subscription" => array(
+        		"plan" => $plantype,
+        		"addons" => array(
+        		),
+        		"payperiod" => "YEAR"
+        		),
+        		"trial" => true
+    	    );
+        }
+    	
+	$bodyJson = json_encode($bodyArr);
 	$token = get_site24x7_access_token($params);
     $curlOrg = curl_init();
     $cli = Capsule::table('zoho_site24x7_auth_table')->first();
     	$domain = $cli->region;
     	if($domain == 'cn') {
-    	    $urlOrg = 'https://payments.zoho.com.'.$domain.'/restapi/partner/v1/json/subscription';		   
+    	    $urlOrg = 'https://store.zoho.com.'.$domain.'/restapi/partner/v1/json/subscription';		   
     	}
         else {
-            $urlOrg = 'https://payments.zoho.'.$domain.'/restapi/partner/v1/json/subscription';
+            $urlOrg = 'https://store.zoho.'.$domain.'/restapi/partner/v1/json/subscription';
         }   
     curl_setopt_array($curlOrg, array(
       CURLOPT_URL => $urlOrg,
@@ -190,33 +205,42 @@ function zoho_site24x7_CreateAccount(array $params)
       CURLOPT_ENCODING => "",
       CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
       CURLOPT_CUSTOMREQUEST => "POST",
-      CURLOPT_POSTFIELDS => $bodyJson,
+      CURLOPT_POSTFIELDS => array('JSONString'=> $bodyJson),
       CURLOPT_HTTPHEADER => array(
-        "Authorization: Zoho-oauthtoken ".$token
+        "Authorization: Zoho-oauthtoken ".$token,
+        "content-type: multipart/form-data",
+        "origin: Whmcs"
       ),
    ));
-
 		$responseOrg = curl_exec($curlOrg);
 		$respOrgJson = json_decode($responseOrg); 
 		$getInfo = curl_getinfo($curlOrg,CURLINFO_HTTP_CODE);
 		curl_close($curlOrg);
 		$result = $respOrgJson->result;
 		if(($result == 'success') && ($getInfo == '200')) {
+		     $licenseDetails = $respOrgJson->licensedetails;
 		    $customid = $respOrgJson->customid;
+		    $domain1 = $params['domain'];
+		    $region = $cli->region;
 		    if($customid != '') {
+		        $planmode = $params['configoptions']['Mode of Plan'];
+		        if($planmode == "Start Trial Plan"){
+		            $profileId = 0;
+		        }
+		        else{
+		            $profileId = $licenseDetails->profileid;
+		        }
 		        $pdo = Capsule::connection()->getPdo();
 		        $pdo->setAttribute(PDO::ATTR_AUTOCOMMIT, 0 );
-		        //$pdo->beginTransaction();
 		        try {
-			        $statement = $pdo->prepare('insert into zoho_site24x7 (authtoken,domain,server,zoid,profileid,superAdmin) values (:authtoken, :domain, :server, :zoid, :profileid, :superAdmin)');
-	 
+			    $statement = $pdo->prepare('insert into zoho_site24x7 (authtoken,domain,server,zoid,profileid,superAdmin) values (:authtoken, :domain, :server, :zoid, :profileid, :superAdmin)');
 		            $statement->execute(
         		     [
         			   ':authtoken' => $token,
-        			   ':domain' => $params['domain'],
-        			   ':server' => $domain,
-        			   ':zoid' => $respOrgJson->customid,
-        			   ':profileid' => $respOrgJson->profileid,
+        			   ':domain' => $domain1,
+        			   ':server' => $region,
+        			   ':zoid' => $customid,
+        			   ':profileid' => $profileId,
         			   ':superAdmin' => "true"              
         		    ]
         		 );
@@ -227,7 +251,6 @@ function zoho_site24x7_CreateAccount(array $params)
         			  return "Uh oh! {$e->getMessage()}".$urlChildPanel;
         			  $pdo->rollBack();
         		  }
-	 
     		  return array ('success' => 'Site24x7 Org has been created successfully.');
     		    }
     		    else if(($result == 'success') && (isset($respOrgJson->ERRORMSG))) {
@@ -258,13 +281,7 @@ function zoho_site24x7_CreateAccount(array $params)
     		}
 	 
 	} catch (Exception $e) {
-		logModuleCall(
-		    'zoho_site24x7',
-		    __FUNCTION__,
-		    $params,
-		    $e->getMessage(),
-		    $e->getTraceAsString()
-		);
+		logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 		return $e->getMessage();
 	    }
  
@@ -277,13 +294,7 @@ function zoho_site24x7_TestConnection(array $params)
 	$errorMsg = '';
     } catch (Exception $e) {
 	// Record the error in WHMCS's module log.
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 	$success = false;
 	$errorMsg = $e->getMessage();
     }
@@ -300,10 +311,10 @@ function zoho_site24x7_AdminServicesTabFields(array $params)
 	    $cli = Capsule::table('zoho_site24x7')->where('domain',$params['domain'])->first();
 	    $domain = $cli->server;
 	    if($domain == 'cn') {
-    	    $paymenturl = 'https://payments.zoho.com.'.$domain.'/store/reseller.do?profileId='.$cli->profileid;
+    	    $paymenturl = 'https://store.zoho.com.'.$domain.'/store/reseller.do?profileId='.$cli->profileid;
     	}
         else {
-            $paymenturl = 'https://payments.zoho.'.$domain.'/store/reseller.do?profileId='.$cli->profileid;
+            $paymenturl = 'https://store.zoho.'.$domain.'/store/reseller.do?profileId='.$cli->profileid;
         }
         
         $authenticateStatus = '<h2 style="color:red;">UnAuthenticated</h2>';
@@ -330,36 +341,20 @@ function zoho_site24x7_AdminServicesTabFields(array $params)
 	    );
 	 
     } catch (Exception $e) {
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
     }
 	    return array();
 }
 function zoho_site24x7_AdminServicesTabFieldsSave(array $params)
 {
     // Fetch form submission variables.
-    $originalFieldValue = isset($_REQUEST['zoho_site24x7_original_uniquefieldname'])
-	? $_REQUEST['zoho_site24x7_original_uniquefieldname']
-	: '';
-    $newFieldValue = isset($_REQUEST['zoho_site24x7_uniquefieldname'])
-	? $_REQUEST['zoho_site24x7_uniquefieldname']
-	: '';
+    $originalFieldValue = isset($_REQUEST['zoho_site24x7_original_uniquefieldname']) ? $_REQUEST['zoho_site24x7_original_uniquefieldname'] : '';
+    $newFieldValue = isset($_REQUEST['zoho_site24x7_uniquefieldname']) ? $_REQUEST['zoho_site24x7_uniquefieldname'] : '';
     if ($originalFieldValue != $newFieldValue) {
 	    try {
 	    } 
 	    catch (Exception $e) {
-	        logModuleCall(
-	        'zoho_site24x7',
-	        __FUNCTION__,
-	        $params,
-	        $e->getMessage(),
-	        $e->getTraceAsString()
-	        );
+	        logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 	    }
     }
 }
@@ -372,13 +367,7 @@ function zoho_site24x7_ServiceSingleSignOn(array $params)
 	    'redirectTo' => $response['redirectUrl'],
 	);
     } catch (Exception $e) {
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall('zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 	return array(
 	    'success' => false,
 	    'errorMsg' => $e->getMessage(),
@@ -397,13 +386,7 @@ function zoho_site24x7_AdminSingleSignOn(array $params)
 	);
     } catch (Exception $e) {
 	// Record the error in WHMCS's module log.
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall( 'zoho_site24x7', __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 	return array(
 	    'success' => false,
 	    'errorMsg' => $e->getMessage(),
@@ -421,20 +404,14 @@ function zoho_site24x7_ClientArea(array $params)
     $site24x7url = 'https://site24x7.'.$domain;
 	  
 	return array(
-        'tabOverviewReplacementTemplate' => $templateFile,
+            'tabOverviewReplacementTemplate' => $templateFile,
 	    'templateVariables' => array(
-	        'site24x7Url' => $site24x7url
-    	 ),
+	         'site24x7Url' => $site24x7url
+    	     ),
 	  );
     } catch (Exception $e) {
 	// Record the error in WHMCS's module log.
-	logModuleCall(
-	    'zoho_site24x7',
-	    __FUNCTION__,
-	    $params,
-	    $e->getMessage(),
-	    $e->getTraceAsString()
-	);
+	logModuleCall('zoho_site24x7',  __FUNCTION__, $params, $e->getMessage(), $e->getTraceAsString());
 	// In an error condition, display an error page.
 	return array(
 	    'tabOverviewReplacementTemplate' => 'error.tpl',
