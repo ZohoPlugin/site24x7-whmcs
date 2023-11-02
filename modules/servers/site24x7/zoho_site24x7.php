@@ -140,11 +140,62 @@ function zoho_site24x7_CreateAccount(array $params)
 	$bodyArr = [];
 	$plantype = $params['configoptions']['Plan Type'];
 	$planmode = $params['configoptions']['Mode of Plan'];
+	$planaddon = $params['configoptions']['Plan Addons'];
 	try {
     	$curl = curl_init();
     	$arrClient = $params['clientsdetails'];
     	$country = $arrClient['countryname'];
-    	
+
+	if($plantype == '3106'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 3258;
+            }else{
+                $addonid = 3272;
+            }
+        }else if($plantype == '3113'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30301;
+            }else{
+                $addonid = 30302;
+            }
+        }else if($plantype == '3117'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30386;
+            }else{
+                $addonid = 30377;
+            }
+        }else if($plantype == '3118'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30391;
+            }else{
+                $addonid = 30397;
+            }
+        }else if($plantype == '3119'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30412;
+            }else{
+                $addonid = 30417;
+            }
+        }else if($plantype == '3120'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30431;
+            }else{
+                $addonid = 30437;
+            }
+        }else if($plantype == '3121'){
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30451;
+            }else{
+                $addonid = 30457;
+            }
+        }else{
+            if($planaddon == 'Basic Monitors'){
+                $addonid = 30471;
+            }else{
+                $addonid = 30477;
+            }
+        }
+		
     	if($planmode == "Assign Paid Plan"){
             $bodyArr = array(
         		"serviceid" => 3,
@@ -161,6 +212,10 @@ function zoho_site24x7_CreateAccount(array $params)
         		"subscription" => array(
         		"plan" => $plantype,
         		"addons" => array(
+				array(
+        		            "id" => $addonid,
+        		            "count" => 1
+        		        )
         		),
         		"payperiod" => "YEAR"
         		)
